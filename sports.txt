@@ -1,0 +1,12 @@
+run
+sport_Run
+sport_TrailRun
+sport_Walk
+sport_Hike
+ride
+sport_Ride
+sport_MountainBikeRide
+sport_GravelRide
+sport_EBikeRide
+sport_EMountainBikeRide
+sport_VeloMobile
