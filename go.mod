@@ -3,7 +3,9 @@ module github.com/p-mng/strava-heatmap-proxy
 go 1.25.0
 
 require (
+	github.com/anthonynsimon/bild v0.17.0
 	github.com/browserutils/kooky v0.2.10
+	github.com/emersion/go-appdir v1.1.2
 	github.com/go-chi/chi/v5 v5.3.1
 	github.com/go-ini/ini v1.67.0
 	github.com/pierrec/lz4/v4 v4.1.28
@@ -11,13 +13,9 @@ require (
 )
 
 require (
-	github.com/HugoSmits86/nativewebp v1.3.0 // indirect
-	github.com/anthonynsimon/bild v0.17.0 // indirect
 	github.com/browserutils/sqlite3 v0.0.2 // indirect
 	github.com/gonuts/binary v0.2.0 // indirect
-	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/spf13/cobra v1.10.2 // indirect
-	github.com/spf13/pflag v1.0.10 // indirect
 	golang.org/x/net v0.57.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
 	gopkg.in/ini.v1 v1.67.3 // indirect
 )

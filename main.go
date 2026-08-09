@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	_ "embed"
 	"errors"
@@ -9,6 +10,7 @@ import (
 	"image"
 	"image/png"
 	_ "image/png"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -19,11 +21,14 @@ import (
 	"github.com/anthonynsimon/bild/adjust"
 	"github.com/browserutils/kooky"
 	_ "github.com/browserutils/kooky/browser/firefox"
+	"github.com/emersion/go-appdir"
 	"github.com/go-chi/chi/v5"
 )
 
 func main() {
-	flags := parseFlags()
+	flags := ParseFlags()
+
+	log.Println("read flags:", flags)
 
 	cookieJar, err := kooky.ReadCookies(
 		context.Background(),
@@ -107,7 +112,26 @@ func main() {
 
 }
 
-func GetTile(z, x, y string, flags Flags, cookies []http.Cookie) (image.Image, error) {
+func GetTile(
+	z string,
+	x string,
+	y string,
+	flags Flags,
+	cookies []http.Cookie,
+) (image.Image, error) {
+	if !flags.NoCache {
+		filename := CacheFileName(z, x, y, flags.Sport, false)
+		file, err := os.Open(filename)
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
+			return nil, err
+		} else if err == nil {
+			log.Println("loading cached tile from disk:", filename)
+			tile, _, err := image.Decode(file)
+			return tile, err
+		}
+	}
+
+	log.Println("cached tile does not exist, downloading from Strava")
 	url := fmt.Sprintf(
 		"https://content-a.strava.com/identified/globalheat/%s/mobileblue/%s/%s/%s.png?v=2",
 		flags.Sport,
@@ -137,12 +161,28 @@ func GetTile(z, x, y string, flags Flags, cookies []http.Cookie) (image.Image, e
 	}
 
 	if response.StatusCode != http.StatusOK {
-		return nil, errors.New("received non-200 status code from strava tile server")
+		return nil, errors.New("received non-200 status code from Strava tile server")
 	}
 
-	tile, _, err := image.Decode(response.Body)
+	buf, err := io.ReadAll(response.Body)
 	if err != nil {
 		return nil, err
+	}
+
+	tile, _, err := image.Decode(bytes.NewBuffer(buf))
+	if err != nil {
+		return nil, err
+	}
+
+	// only save to cache after we know the image is good
+	if !flags.NoCache {
+		if err := os.MkdirAll(CacheFileName(z, x, y, flags.Sport, true), 0755); err != nil {
+			return nil, err
+		}
+
+		if err := os.WriteFile(CacheFileName(z, x, y, flags.Sport, false), buf, 0644); err != nil {
+			return nil, err
+		}
 	}
 
 	if flags.Hue != 0 {
@@ -156,6 +196,18 @@ func GetTile(z, x, y string, flags Flags, cookies []http.Cookie) (image.Image, e
 	return tile, nil
 }
 
+func CacheDir() string {
+	return appdir.New("strava_heatmap").UserCache()
+}
+
+func CacheFileName(z, x, y, sport string, dir bool) string {
+	if dir {
+		return fmt.Sprintf("%s/%s/%s/%s", CacheDir(), sport, z, x)
+	} else {
+		return fmt.Sprintf("%s/%s/%s/%s/%s.png", CacheDir(), sport, z, x, y)
+	}
+}
+
 type Flags struct {
 	Sport     string
 	ListenURL string
@@ -163,9 +215,10 @@ type Flags struct {
 	CertFile  string
 	KeyFile   string
 	Hue       int
+	NoCache   bool
 }
 
-func parseFlags() Flags {
+func ParseFlags() Flags {
 	sport := flag.String(
 		"sport",
 		"sport_Ride",
@@ -196,6 +249,11 @@ func parseFlags() Flags {
 		0,
 		"shift the hue of the heatmap from the default blue, measured in degrees",
 	)
+	noCache := flag.Bool(
+		"nocache",
+		false,
+		"disable caching of downloaded tiles",
+	)
 
 	flag.Parse()
 
@@ -206,5 +264,6 @@ func parseFlags() Flags {
 		CertFile:  *certFile,
 		KeyFile:   *keyFile,
 		Hue:       *hue,
+		NoCache:   *noCache,
 	}
 }
