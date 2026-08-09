@@ -14,16 +14,21 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 
 	_ "golang.org/x/image/webp"
 
 	"github.com/anthonynsimon/bild/adjust"
+	"github.com/anthonynsimon/bild/transform"
 	"github.com/browserutils/kooky"
 	_ "github.com/browserutils/kooky/browser/firefox"
 	"github.com/emersion/go-appdir"
 	"github.com/go-chi/chi/v5"
 )
+
+// default width returned by the Strava tile server
+const WIDTH = 512
 
 func main() {
 	flags := ParseFlags()
@@ -78,9 +83,14 @@ func main() {
 	r := chi.NewRouter()
 
 	r.Get("/{z}/{x}/{y}.png", func(w http.ResponseWriter, r *http.Request) {
-		z := chi.URLParam(r, "z")
-		x := chi.URLParam(r, "x")
-		y := chi.URLParam(r, "y")
+		z, err1 := strconv.Atoi(chi.URLParam(r, "z"))
+		x, err2 := strconv.Atoi(chi.URLParam(r, "x"))
+		y, err3 := strconv.Atoi(chi.URLParam(r, "y"))
+		if errors.Join(err1, err2, err3) != nil {
+			log.Println("invalid URL parameters")
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 
 		tile, err := GetTile(z, x, y, flags, cookies)
 		if err != nil {
@@ -113,9 +123,9 @@ func main() {
 }
 
 func GetTile(
-	z string,
-	x string,
-	y string,
+	z int,
+	x int,
+	y int,
 	flags Flags,
 	cookies []http.Cookie,
 ) (image.Image, error) {
@@ -131,9 +141,29 @@ func GetTile(
 		}
 	}
 
+	// Strava servers do not offer zoom levels > 15
+	if z > 15 {
+		divisor := 1 << (z - 15)
+
+		tileX := x / divisor
+		tileY := y / divisor
+
+		tile, _ := GetTile(15, tileX, tileY, flags, cookies)
+
+		newWidth := WIDTH / divisor
+		offsetX := x % divisor * newWidth
+		offsetY := y % divisor * newWidth
+
+		rect := image.Rect(offsetX, offsetY, offsetX+newWidth, offsetY+newWidth)
+		log.Println("cropping tile:", rect)
+
+		cropped := transform.Crop(tile, rect)
+		return cropped, nil
+	}
+
 	log.Println("cached tile does not exist, downloading from Strava")
 	url := fmt.Sprintf(
-		"https://content-a.strava.com/identified/globalheat/%s/mobileblue/%s/%s/%s.png?v=2",
+		"https://content-a.strava.com/identified/globalheat/%s/mobileblue/%d/%d/%d.png?v=2",
 		flags.Sport,
 		z,
 		x,
@@ -200,11 +230,11 @@ func CacheDir() string {
 	return appdir.New("strava_heatmap").UserCache()
 }
 
-func CacheFileName(z, x, y, sport string, dir bool) string {
+func CacheFileName(z, x, y int, sport string, dir bool) string {
 	if dir {
-		return fmt.Sprintf("%s/%s/%s/%s", CacheDir(), sport, z, x)
+		return fmt.Sprintf("%s/%s/%d/%d", CacheDir(), sport, z, x)
 	} else {
-		return fmt.Sprintf("%s/%s/%s/%s/%s.png", CacheDir(), sport, z, x, y)
+		return fmt.Sprintf("%s/%s/%d/%d/%d.png", CacheDir(), sport, z, x, y)
 	}
 }
 
