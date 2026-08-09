@@ -27,8 +27,16 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-// default width returned by the Strava tile server
-const WIDTH = 512
+type Flags struct {
+	Sport      string
+	ListenURL  string
+	UserAgent  string
+	CertFile   string
+	KeyFile    string
+	Hue        int
+	Saturation float64
+	NoCache    bool
+}
 
 func main() {
 	flags := ParseFlags()
@@ -99,7 +107,13 @@ func main() {
 			return
 		}
 
-		png.Encode(w, tile)
+		tile = TilePipeline(tile, z, flags)
+
+		if err := png.Encode(w, tile); err != nil {
+			log.Println("error encoding tile:", err.Error())
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	})
 
 	if flags.CertFile == "" || flags.KeyFile == "" {
@@ -150,7 +164,7 @@ func GetTile(
 
 		tile, _ := GetTile(15, tileX, tileY, flags, cookies)
 
-		newWidth := WIDTH / divisor
+		newWidth := 512 / divisor
 		offsetX := x % divisor * newWidth
 		offsetY := y % divisor * newWidth
 
@@ -161,7 +175,6 @@ func GetTile(
 		return cropped, nil
 	}
 
-	log.Println("cached tile does not exist, downloading from Strava")
 	url := fmt.Sprintf(
 		"https://content-a.strava.com/identified/globalheat/%s/mobileblue/%d/%d/%d.png?v=2",
 		flags.Sport,
@@ -169,7 +182,7 @@ func GetTile(
 		x,
 		y,
 	)
-	log.Println("fetching", url)
+	log.Println("cached tile does not exist, downloading from Strava:", url)
 
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -189,6 +202,11 @@ func GetTile(
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		if err := response.Body.Close(); err != nil {
+			log.Println("error closing response body:", err.Error())
+		}
+	}()
 
 	if response.StatusCode != http.StatusOK {
 		return nil, errors.New("received non-200 status code from Strava tile server")
@@ -215,15 +233,17 @@ func GetTile(
 		}
 	}
 
+	return tile, nil
+}
+
+func TilePipeline(tile image.Image, zoom int, flags Flags) image.Image {
 	if flags.Hue != 0 {
 		tile = adjust.Hue(tile, flags.Hue)
 	}
-
-	if err := response.Body.Close(); err != nil {
-		log.Println("error closing response body:", err.Error())
+	if flags.Saturation != 0 {
+		tile = adjust.Saturation(tile, flags.Saturation)
 	}
-
-	return tile, nil
+	return tile
 }
 
 func CacheDir() string {
@@ -236,16 +256,6 @@ func CacheFileName(z, x, y int, sport string, dir bool) string {
 	} else {
 		return fmt.Sprintf("%s/%s/%d/%d/%d.png", CacheDir(), sport, z, x, y)
 	}
-}
-
-type Flags struct {
-	Sport     string
-	ListenURL string
-	UserAgent string
-	CertFile  string
-	KeyFile   string
-	Hue       int
-	NoCache   bool
 }
 
 func ParseFlags() Flags {
@@ -279,6 +289,11 @@ func ParseFlags() Flags {
 		0,
 		"shift the hue of the heatmap from the default blue, measured in degrees",
 	)
+	saturation := flag.Float64(
+		"saturation",
+		0,
+		"adjusts the saturation of the image, with -1.0 being -100% and 1.0 being 100%",
+	)
 	noCache := flag.Bool(
 		"nocache",
 		false,
@@ -288,12 +303,13 @@ func ParseFlags() Flags {
 	flag.Parse()
 
 	return Flags{
-		Sport:     *sport,
-		ListenURL: *listenURL,
-		UserAgent: *userAgent,
-		CertFile:  *certFile,
-		KeyFile:   *keyFile,
-		Hue:       *hue,
-		NoCache:   *noCache,
+		Sport:      *sport,
+		ListenURL:  *listenURL,
+		UserAgent:  *userAgent,
+		CertFile:   *certFile,
+		KeyFile:    *keyFile,
+		Hue:        *hue,
+		Saturation: *saturation,
+		NoCache:    *noCache,
 	}
 }
