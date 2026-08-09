@@ -16,6 +16,7 @@ import (
 
 	_ "golang.org/x/image/webp"
 
+	"github.com/anthonynsimon/bild/adjust"
 	"github.com/browserutils/kooky"
 	_ "github.com/browserutils/kooky/browser/firefox"
 	"github.com/go-chi/chi/v5"
@@ -76,7 +77,7 @@ func main() {
 		x := chi.URLParam(r, "x")
 		y := chi.URLParam(r, "y")
 
-		tile, err := GetTile(z, x, y, flags.Sport, flags.UserAgent, cookies)
+		tile, err := GetTile(z, x, y, flags, cookies)
 		if err != nil {
 			log.Println("error fetching tile from Strava:", err.Error())
 			w.WriteHeader(http.StatusInternalServerError)
@@ -106,8 +107,14 @@ func main() {
 
 }
 
-func GetTile(z, x, y, sport, userAgent string, cookies []http.Cookie) (image.Image, error) {
-	url := fmt.Sprintf("https://content-a.strava.com/identified/globalheat/%s/mobileblue/%s/%s/%s.png?v=2", sport, z, x, y)
+func GetTile(z, x, y string, flags Flags, cookies []http.Cookie) (image.Image, error) {
+	url := fmt.Sprintf(
+		"https://content-a.strava.com/identified/globalheat/%s/mobileblue/%s/%s/%s.png?v=2",
+		flags.Sport,
+		z,
+		x,
+		y,
+	)
 	log.Println("fetching", url)
 
 	req, err := http.NewRequest(http.MethodGet, url, nil)
@@ -119,7 +126,7 @@ func GetTile(z, x, y, sport, userAgent string, cookies []http.Cookie) (image.Ima
 		req.AddCookie(&c)
 	}
 
-	req.Header.Add("User-Agent", userAgent)
+	req.Header.Add("User-Agent", flags.UserAgent)
 	req.Header.Add("Accept", "image/webp,*/*")
 	req.Header.Add("Referer", "https://www.strava.com/")
 	req.Header.Add("Origin", "https://www.strava.com")
@@ -138,6 +145,10 @@ func GetTile(z, x, y, sport, userAgent string, cookies []http.Cookie) (image.Ima
 		return nil, err
 	}
 
+	if flags.Hue != 0 {
+		tile = adjust.Hue(tile, flags.Hue)
+	}
+
 	if err := response.Body.Close(); err != nil {
 		log.Println("error closing response body:", err.Error())
 	}
@@ -151,6 +162,7 @@ type Flags struct {
 	UserAgent string
 	CertFile  string
 	KeyFile   string
+	Hue       int
 }
 
 func parseFlags() Flags {
@@ -179,6 +191,11 @@ func parseFlags() Flags {
 		"",
 		"certificate key file for the built-in HTTPS server",
 	)
+	hue := flag.Int(
+		"hue",
+		0,
+		"shift the hue of the heatmap from the default blue, measured in degrees",
+	)
 
 	flag.Parse()
 
@@ -188,5 +205,6 @@ func parseFlags() Flags {
 		UserAgent: *userAgent,
 		CertFile:  *certFile,
 		KeyFile:   *keyFile,
+		Hue:       *hue,
 	}
 }
