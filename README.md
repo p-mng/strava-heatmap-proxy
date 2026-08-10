@@ -1,10 +1,20 @@
 # strava-heatmap-proxy
 
-A small utility program that serves a local proxy for the Strava heatmap, making it accessible in other programs like BikeRouter (e.g., `bikerouter.de` and `brouter.de`), GIS software (e.g., QGIS), and OpenStreetMap editors (e.g., iD).
+A utility program that serves a local proxy for the Strava heatmap, making it accessible in other programs like BRouter (e.g., `bikerouter.de` and `brouter.de`), GIS software (e.g., QGIS), and OpenStreetMap editors (e.g., iD).
 
 ![Screenshot](./assets/screenshot.png)
 
+> [!IMPORTANT]
+> Currently, only macOS/Linux and Firefox are supported. Help with porting the program to Windows and Chromium-based browsers is always welcome!
+
+## Installation
+
+The program can be installed using `go install github.com/p-mng/strava-heatmap-proxy@latest`.
 ## Usage
+
+1. Start Firefox and log into your Strava account.
+2. Start the program (e.g., `strava-heatmap-proxy -sport sport_MountainBikeRide`). See the help below for an explanation of all available options.
+3. Add the tile layer/overlay to your program of choice using the following URL: `http://localhost:8080/{z}/{x}/{y}.png`.
 
 ```
 Usage of strava-heatmap-proxy:
@@ -25,12 +35,6 @@ Usage of strava-heatmap-proxy:
   -useragent string
         user agent to use for HTTP requests (default "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:138.0) Gecko/20100101 Firefox/138.0")
 ```
-
-Add the tile layer/overlay to your program of choice using the following URL: `http://localhost:8080/{z}/{x}/{y}.png`.
-
-## Installation
-
-The program can be installed using `go install https://github.com/p-mng/strava-heatmap-proxy@latest`.
 
 ## Contributing
 
