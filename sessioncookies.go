@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -60,14 +61,14 @@ func ExtractLZ4(filename string) (*SessionCookieJar, error) {
 	}
 
 	if len(data) < 12 {
-		return nil, fmt.Errorf("file too short")
+		return nil, errors.New("lz4 file too short")
 	}
 
-	// Get uncompressed size (little endian uint32 at offset 8)
+	// get uncompressed size (little endian uint32 at offset 8)
 	outSize := binary.LittleEndian.Uint32(data[8:12])
 	dst := make([]byte, outSize)
 
-	// Decompress from offset 12
+	// decompress from offset 12
 	src := data[12:]
 	n, err := lz4.UncompressBlock(src, dst)
 	if err != nil {

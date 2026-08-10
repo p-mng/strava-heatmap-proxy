@@ -73,6 +73,7 @@ func main() {
 				continue
 			}
 
+			//nolint:exhaustruct
 			cookies = append(cookies, http.Cookie{
 				Name:        cookie.Name,
 				Value:       cookie.Value,
@@ -107,7 +108,7 @@ func main() {
 			return
 		}
 
-		tile = TilePipeline(tile, z, flags)
+		tile = TilePipeline(tile, flags)
 
 		if err := png.Encode(w, tile); err != nil {
 			log.Println("error encoding tile:", err.Error())
@@ -236,7 +237,7 @@ func GetTile(
 	return tile, nil
 }
 
-func TilePipeline(tile image.Image, zoom int, flags Flags) image.Image {
+func TilePipeline(tile image.Image, flags Flags) image.Image {
 	if flags.Hue != 0 {
 		tile = adjust.Hue(tile, flags.Hue)
 	}
@@ -253,9 +254,8 @@ func CacheDir() string {
 func CacheFileName(z, x, y int, sport string, dir bool) string {
 	if dir {
 		return fmt.Sprintf("%s/%s/%d/%d", CacheDir(), sport, z, x)
-	} else {
-		return fmt.Sprintf("%s/%s/%d/%d/%d.png", CacheDir(), sport, z, x, y)
 	}
+	return fmt.Sprintf("%s/%s/%d/%d/%d.png", CacheDir(), sport, z, x, y)
 }
 
 func ParseFlags() Flags {
