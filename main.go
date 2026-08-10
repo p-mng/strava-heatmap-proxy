@@ -163,7 +163,10 @@ func GetTile(
 		tileX := x / divisor
 		tileY := y / divisor
 
-		tile, _ := GetTile(15, tileX, tileY, flags, cookies)
+		tile, err := GetTile(15, tileX, tileY, flags, cookies)
+		if err != nil {
+			return nil, err
+		}
 
 		newWidth := 512 / divisor
 		offsetX := x % divisor * newWidth
