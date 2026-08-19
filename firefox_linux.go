@@ -1,5 +1,3 @@
-//go:build linux
-
 package main
 
 import (
@@ -7,7 +5,7 @@ import (
 	"os"
 )
 
-// FirefoxPath returns the Firefox data path.
+// FirefoxPath returns the Firefox data path on Linux.
 func FirefoxPath() string {
 	return fmt.Sprintf("%s/.mozilla/firefox", os.Getenv("HOME"))
 }

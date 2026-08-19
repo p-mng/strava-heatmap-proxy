@@ -6,12 +6,71 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"strings"
 
 	"github.com/go-ini/ini"
 	"github.com/pierrec/lz4/v4"
 )
+
+type SessionCookieJar struct {
+	Cookies []Cookie `json:"cookies"`
+}
+
+type Cookie struct {
+	Host             string           `json:"host"`
+	Value            string           `json:"value"`
+	Path             string           `json:"path"`
+	Name             string           `json:"name"`
+	Secure           bool             `json:"secure,omitempty"`
+	Httponly         bool             `json:"httponly,omitempty"`
+	OriginAttributes OriginAttributes `json:"originAttributes"`
+	SameSite         int              `json:"sameSite,omitempty"`
+	SchemeMap        int              `json:"schemeMap"`
+	IsPartitioned    bool             `json:"isPartitioned,omitempty"`
+}
+
+type OriginAttributes struct {
+	FirstPartyDomain          string `json:"firstPartyDomain"`
+	GeckoViewSessionContextID string `json:"geckoViewSessionContextId"`
+	PartitionKey              string `json:"partitionKey"`
+	PrivateBrowsingID         int    `json:"privateBrowsingId"`
+	UserContextID             int    `json:"userContextId"`
+}
+
+// GetSessionCookies returns all Firefox session cookies.
+func GetSessionCookies() ([]http.Cookie, error) {
+	sessionCookieJars, err := GetSessionCookieJars()
+	if err != nil {
+		return nil, err
+	}
+
+	var cookies []http.Cookie
+	for _, sessionCookieJar := range sessionCookieJars {
+		for _, cookie := range sessionCookieJar.Cookies {
+			if !strings.HasSuffix(cookie.Host, "strava.com") {
+				continue
+			}
+
+			//nolint:exhaustruct
+			cookies = append(cookies, http.Cookie{
+				Name:        cookie.Name,
+				Value:       cookie.Value,
+				Path:        cookie.Path,
+				Domain:      cookie.Host,
+				Secure:      cookie.Secure,
+				HttpOnly:    cookie.Httponly,
+				SameSite:    http.SameSite(cookie.SameSite),
+				Partitioned: cookie.IsPartitioned,
+			})
+
+			log.Println("found session cookie:", cookie.Name)
+		}
+	}
+
+	return cookies, nil
+}
 
 // GetSessionCookieJars extracts all session cookies from all Firefox profiles.
 func GetSessionCookieJars() ([]*SessionCookieJar, error) {

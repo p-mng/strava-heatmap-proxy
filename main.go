@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"context"
 	_ "embed"
 	"errors"
 	"flag"
@@ -15,14 +14,11 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
 
 	_ "golang.org/x/image/webp"
 
 	"github.com/anthonynsimon/bild/adjust"
 	"github.com/anthonynsimon/bild/transform"
-	"github.com/browserutils/kooky"
-	_ "github.com/browserutils/kooky/browser/firefox"
 	"github.com/emersion/go-appdir"
 	"github.com/go-chi/chi/v5"
 )
@@ -36,57 +32,33 @@ type Flags struct {
 	Hue        int
 	Saturation float64
 	NoCache    bool
+	Cookies    string
 }
 
 func main() {
 	flags := ParseFlags()
 
-	log.Println("read flags:", flags)
-
-	cookieJar, err := kooky.ReadCookies(
-		context.Background(),
-		kooky.Valid,
-		kooky.DomainHasSuffix("strava.com"),
-	)
-	if err != nil {
-		log.Println("cannot read cookies from browser:", err.Error())
-		os.Exit(1)
-	}
-
 	var cookies []http.Cookie
-
-	for _, cookie := range cookieJar {
-		cookies = append(cookies, cookie.Cookie)
-
-		log.Println("found cookie:", cookie.Name)
-	}
-
-	sessionCookieJars, err := GetSessionCookieJars()
-	if err != nil {
-		log.Println("error extracting firefox session cookies:", err)
-		return
-	}
-
-	for _, sessionCookieJar := range sessionCookieJars {
-		for _, cookie := range sessionCookieJar.Cookies {
-			if !strings.HasSuffix(cookie.Host, "strava.com") {
-				continue
-			}
-
-			//nolint:exhaustruct
-			cookies = append(cookies, http.Cookie{
-				Name:        cookie.Name,
-				Value:       cookie.Value,
-				Path:        cookie.Path,
-				Domain:      cookie.Host,
-				Secure:      cookie.Secure,
-				HttpOnly:    cookie.Httponly,
-				SameSite:    http.SameSite(cookie.SameSite),
-				Partitioned: cookie.IsPartitioned,
-			})
-
-			log.Println("found session cookie:", cookie.Name)
+	if flags.Cookies == "" {
+		browserCookies, err := GetBrowserCookies()
+		if err != nil {
+			log.Println("error loading browser cookies:", err.Error())
+			return
 		}
+		sessionCookies, err := GetSessionCookies()
+		if err != nil {
+			log.Println("error loading session cookies:", err.Error())
+			return
+		}
+		cookies = append(cookies, browserCookies...)
+		cookies = append(cookies, sessionCookies...)
+	} else {
+		exportedCookies, err := ParseExportedCookies(flags.Cookies)
+		if err != nil {
+			log.Println("error parsing exported cookies:", err.Error())
+			return
+		}
+		cookies = append(cookies, exportedCookies...)
 	}
 
 	r := chi.NewRouter()
@@ -302,6 +274,11 @@ func ParseFlags() Flags {
 		false,
 		"disable caching of downloaded tiles",
 	)
+	cookies := flag.String(
+		"cookies",
+		"",
+		"JSON cookies exported using Cookie-Editor",
+	)
 
 	flag.Parse()
 
@@ -314,5 +291,6 @@ func ParseFlags() Flags {
 		Hue:        *hue,
 		Saturation: *saturation,
 		NoCache:    *noCache,
+		Cookies:    *cookies,
 	}
 }
