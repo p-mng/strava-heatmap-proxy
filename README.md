@@ -16,8 +16,8 @@ The latest version can be installed using `go install github.com/p-mng/strava-he
 - Start Firefox and log into your Strava account.
 - Start the proxy (e.g., using `strava-heatmap-proxy -sport sport_MountainBikeRide`). See the help below for an explanation of all available options.
   - By default, the program will try to extract the required cookies from Firefox (only works on macOS and Linux).
-  - If this fails (because you use Windows, Chrome, or a private session), you can manually export cookies using Cookie-Editor extension (download for [Firefox](https://addons.mozilla.org/en-US/firefox/addon/cookie-editor/) or [Chrome](https://chromewebstore.google.com/detail/cookie-editor/hlkenndednhfkekhgcdicdfddnkalmdm)) as JSON and pass them to the program.
-  - Cookies are cached by default, so on subsequent launches you don't need to extract or export cookies again.
+  - If this fails (because you use Windows, Chrome, or a private session), you can manually export cookies using the [Cookie-Editor extension](https://cookie-editor.com/) (download for [Firefox](https://addons.mozilla.org/en-US/firefox/addon/cookie-editor/) or [Chrome](https://chromewebstore.google.com/detail/cookie-editor/hlkenndednhfkekhgcdicdfddnkalmdm)) as JSON and pass them to the program.
+  - Cookies and tiles are cached locally by default, so on subsequent launches you don't need to extract or export cookies again.
 - Add the tile layer/overlay to your program of choice using the following URL: `http://localhost:8080/{z}/{x}/{y}.png`.
 
 ```
