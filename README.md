@@ -1,4 +1,4 @@
-# strava-heatmap-proxy
+# Strava Heatmap Proxy
 
 A utility program that serves a local proxy for the Strava heatmap, making it accessible in other programs like BRouter (e.g., `bikerouter.de` and `brouter.de`), GIS software (e.g., QGIS), and OpenStreetMap editors (e.g., iD).
 
