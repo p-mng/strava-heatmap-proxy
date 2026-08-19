@@ -4,9 +4,6 @@ A utility program that serves a local proxy for the Strava heatmap, making it ac
 
 ![Screenshot](./assets/screenshot.png)
 
-> [!IMPORTANT]
-> Currently, only macOS/Linux and Firefox are supported. While there might be workarounds for getting the proxy to run on other setups, help with porting the program to Windows and Chromium-based browsers is always welcome!
-
 ## Installation
 
 The latest version can be installed using `go install github.com/p-mng/strava-heatmap-proxy@latest`.
