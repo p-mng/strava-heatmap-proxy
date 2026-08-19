@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	_ "embed"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path"
 	"strconv"
 
 	_ "golang.org/x/image/webp"
@@ -39,26 +41,74 @@ func main() {
 	flags := ParseFlags()
 
 	var cookies []http.Cookie
-	if flags.Cookies == "" {
-		browserCookies, err := GetBrowserCookies()
-		if err != nil {
-			log.Println("error loading browser cookies:", err.Error())
-			return
-		}
-		sessionCookies, err := GetSessionCookies()
-		if err != nil {
-			log.Println("error loading session cookies:", err.Error())
-			return
-		}
-		cookies = append(cookies, browserCookies...)
-		cookies = append(cookies, sessionCookies...)
+
+	cookieFilename := path.Join(CacheDir(), "cookies")
+	readCookies := false
+	dumpCookies := false
+
+	cookieFile, err := os.Open(cookieFilename)
+	if os.IsNotExist(err) && !flags.NoCache {
+		dumpCookies = true
+	} else if err != nil {
+		log.Println("error opening cookie cache:", err.Error())
+		return
 	} else {
-		exportedCookies, err := ParseExportedCookies(flags.Cookies)
-		if err != nil {
-			log.Println("error parsing exported cookies:", err.Error())
+		readCookies = true
+	}
+	defer func(c io.Closer) {
+		if err := c.Close(); err != nil {
+			log.Println("error closing cookie file:", err.Error())
+		}
+	}(cookieFile)
+
+	if readCookies {
+		log.Println("reading cookies from cache:", cookieFilename)
+
+		if err := json.NewDecoder(cookieFile).Decode(&cookies); err != nil {
+			log.Println("error reading cached cookies:", err.Error())
 			return
 		}
-		cookies = append(cookies, exportedCookies...)
+	} else {
+		log.Println("loading cookies from Firefox")
+
+		if flags.Cookies == "" {
+			browserCookies, err := GetBrowserCookies()
+			if err != nil {
+				log.Println("error loading browser cookies:", err.Error())
+				return
+			}
+			sessionCookies, err := GetSessionCookies()
+			if err != nil {
+				log.Println("error loading session cookies:", err.Error())
+				return
+			}
+			cookies = append(cookies, browserCookies...)
+			cookies = append(cookies, sessionCookies...)
+		} else {
+			log.Println("parsing cookies from CLI flags")
+
+			exportedCookies, err := ParseExportedCookies(flags.Cookies)
+			if err != nil {
+				log.Println("error parsing exported cookies:", err.Error())
+				return
+			}
+			cookies = append(cookies, exportedCookies...)
+		}
+
+	}
+
+	if dumpCookies {
+		log.Println("writing cookies to cache:", cookieFilename)
+
+		cookieFile, err := os.Create(cookieFilename)
+		if err != nil {
+			log.Println("error creating cookie cache:", err.Error())
+			return
+		}
+		if err := json.NewEncoder(cookieFile).Encode(cookies); err != nil {
+			log.Println("error dumping cached cookies:", err.Error())
+			return
+		}
 	}
 
 	r := chi.NewRouter()
@@ -272,7 +322,7 @@ func ParseFlags() Flags {
 	noCache := flag.Bool(
 		"nocache",
 		false,
-		"disable caching of downloaded tiles",
+		"disable caching of downloaded tiles and cookies",
 	)
 	cookies := flag.String(
 		"cookies",
