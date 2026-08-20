@@ -26,14 +26,12 @@ import (
 )
 
 type Flags struct {
-	ListenURL  string
-	UserAgent  string
-	CertFile   string
-	KeyFile    string
-	Hue        int
-	Saturation float64
-	NoCache    bool
-	Cookies    string
+	ListenURL string
+	UserAgent string
+	CertFile  string
+	KeyFile   string
+	NoCache   bool
+	Cookies   string
 }
 
 func main() {
@@ -128,6 +126,9 @@ func main() {
 			return
 		}
 
+		hue, _ := strconv.Atoi(r.URL.Query().Get("hue"))
+		saturation, _ := strconv.ParseFloat(r.URL.Query().Get("saturation"), 64)
+
 		tile, err := GetTile(sport, z, x, y, flags, cookies)
 		if err != nil {
 			log.Println("error fetching tile from Strava:", err.Error())
@@ -135,7 +136,7 @@ func main() {
 			return
 		}
 
-		tile = TilePipeline(tile, flags)
+		tile = TilePipeline(tile, hue, saturation)
 
 		if err := png.Encode(w, tile); err != nil {
 			log.Println("error encoding tile:", err.Error())
@@ -268,12 +269,12 @@ func GetTile(
 	return tile, nil
 }
 
-func TilePipeline(tile image.Image, flags Flags) image.Image {
-	if flags.Hue != 0 {
-		tile = adjust.Hue(tile, flags.Hue)
+func TilePipeline(tile image.Image, hue int, saturation float64) image.Image {
+	if hue != 0 {
+		tile = adjust.Hue(tile, hue)
 	}
-	if flags.Saturation != 0 {
-		tile = adjust.Saturation(tile, flags.Saturation)
+	if saturation != 0 {
+		tile = adjust.Saturation(tile, saturation)
 	}
 	return tile
 }
@@ -310,16 +311,6 @@ func ParseFlags() Flags {
 		"",
 		"certificate key file for the built-in HTTPS server",
 	)
-	hue := flag.Int(
-		"hue",
-		0,
-		"shift the hue of the heatmap from the default blue, measured in degrees",
-	)
-	saturation := flag.Float64(
-		"saturation",
-		0,
-		"adjusts the saturation of the image, with -1.0 being -100% and 1.0 being 100%",
-	)
 	noCache := flag.Bool(
 		"nocache",
 		false,
@@ -334,13 +325,11 @@ func ParseFlags() Flags {
 	flag.Parse()
 
 	return Flags{
-		ListenURL:  *listenURL,
-		UserAgent:  *userAgent,
-		CertFile:   *certFile,
-		KeyFile:    *keyFile,
-		Hue:        *hue,
-		Saturation: *saturation,
-		NoCache:    *noCache,
-		Cookies:    *cookies,
+		ListenURL: *listenURL,
+		UserAgent: *userAgent,
+		CertFile:  *certFile,
+		KeyFile:   *keyFile,
+		NoCache:   *noCache,
+		Cookies:   *cookies,
 	}
 }
