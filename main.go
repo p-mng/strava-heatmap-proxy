@@ -28,8 +28,6 @@ import (
 type Flags struct {
 	ListenURL string
 	UserAgent string
-	CertFile  string
-	KeyFile   string
 	NoCache   bool
 	Cookies   string
 }
@@ -145,22 +143,10 @@ func main() {
 		}
 	})
 
-	if flags.CertFile == "" || flags.KeyFile == "" {
-		log.Println("starting HTTP server on", flags.ListenURL)
-
-		if err := http.ListenAndServe(flags.ListenURL, r); err != nil {
-			log.Println("error starting local server", err)
-			return
-		}
-	} else {
-		log.Println("starting HTTPS server on", flags.ListenURL)
-		log.Println("using certificate file", flags.CertFile)
-		log.Println("using certificate key file", flags.KeyFile)
-
-		if err := http.ListenAndServeTLS(flags.ListenURL, flags.CertFile, flags.KeyFile, r); err != nil {
-			log.Println("error starting local server", err)
-			return
-		}
+	log.Println("starting HTTP server on", flags.ListenURL)
+	if err := http.ListenAndServe(flags.ListenURL, r); err != nil {
+		log.Println("error starting local server", err)
+		return
 	}
 
 }
@@ -301,16 +287,6 @@ func ParseFlags() Flags {
 		"Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:138.0) Gecko/20100101 Firefox/138.0",
 		"user agent to use for HTTP requests",
 	)
-	certFile := flag.String(
-		"certfile",
-		"",
-		"certificate file for the built-in HTTPS server",
-	)
-	keyFile := flag.String(
-		"keyfile",
-		"",
-		"certificate key file for the built-in HTTPS server",
-	)
 	noCache := flag.Bool(
 		"nocache",
 		false,
@@ -327,8 +303,6 @@ func ParseFlags() Flags {
 	return Flags{
 		ListenURL: *listenURL,
 		UserAgent: *userAgent,
-		CertFile:  *certFile,
-		KeyFile:   *keyFile,
 		NoCache:   *noCache,
 		Cookies:   *cookies,
 	}
