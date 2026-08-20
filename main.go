@@ -42,6 +42,11 @@ func main() {
 
 	var cookies []http.Cookie
 
+	if err := os.MkdirAll(CacheDir(), 0755); err != nil {
+		log.Println("error creating cache directory:", err.Error())
+		return
+	}
+
 	cookieFilename := path.Join(CacheDir(), "cookies")
 	readCookies := false
 	dumpCookies := false
