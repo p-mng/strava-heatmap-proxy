@@ -10,31 +10,24 @@ The latest version can be installed using `go install github.com/p-mng/strava-he
 
 ## Usage
 
-- Start Firefox and log into your Strava account.
-- Start the proxy (e.g., using `strava-heatmap-proxy -sport sport_MountainBikeRide`). See the help below for an explanation of all available options.
+- Log into your Strava account.
+- Start the proxy using the command `strava-heatmap-proxy`. See the help below for an explanation of all available options.
   - By default, the program will try to extract the required cookies from Firefox (only works on macOS and Linux).
   - If this fails (because you use Windows, Chrome, or a private session), you can manually export cookies using the [Cookie-Editor extension](https://cookie-editor.com/) (download for [Firefox](https://addons.mozilla.org/en-US/firefox/addon/cookie-editor/) or [Chrome](https://chromewebstore.google.com/detail/cookie-editor/hlkenndednhfkekhgcdicdfddnkalmdm)) as JSON and pass them to the program.
   - Cookies and tiles are cached locally by default, so on subsequent launches you don't need to extract or export cookies again.
-- Add the tile layer/overlay to your program of choice using the following URL: `http://localhost:8080/{z}/{x}/{y}.png`.
+- Add the tile layer/overlay to your program of choice using the following URL: `http://localhost:8080/<sport>/{z}/{x}/{y}.png`.
+  - Replace `<sport>` with the heatmap layer of your choice. List available sports using `strava-heatmap-proxy -sports`.
 
 ```
 Usage of strava-heatmap-proxy:
-  -certfile string
-        certificate file for the built-in HTTPS server
   -cookies string
         JSON cookies exported using Cookie-Editor
-  -hue int
-        shift the hue of the heatmap from the default blue, measured in degrees
-  -keyfile string
-        certificate key file for the built-in HTTPS server
   -listen string
         listen URL used for the HTTP(s) server (default "localhost:8080")
   -nocache
         disable caching of downloaded tiles and cookies
-  -saturation float
-        adjusts the saturation of the image, with -1.0 being -100% and 1.0 being 100%
-  -sport string
-        internal sport identifier used by Strava (default "sport_Ride")
+  -sports
+        print some available sports types
   -useragent string
         user agent to use for HTTP requests (default "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:138.0) Gecko/20100101 Firefox/138.0")
 ```
