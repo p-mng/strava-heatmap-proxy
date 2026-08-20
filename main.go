@@ -26,7 +26,6 @@ import (
 )
 
 type Flags struct {
-	Sport      string
 	ListenURL  string
 	UserAgent  string
 	CertFile   string
@@ -118,7 +117,8 @@ func main() {
 
 	r := chi.NewRouter()
 
-	r.Get("/{z}/{x}/{y}.png", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/{sport}/{z}/{x}/{y}.png", func(w http.ResponseWriter, r *http.Request) {
+		sport := chi.URLParam(r, "sport")
 		z, err1 := strconv.Atoi(chi.URLParam(r, "z"))
 		x, err2 := strconv.Atoi(chi.URLParam(r, "x"))
 		y, err3 := strconv.Atoi(chi.URLParam(r, "y"))
@@ -128,7 +128,7 @@ func main() {
 			return
 		}
 
-		tile, err := GetTile(z, x, y, flags, cookies)
+		tile, err := GetTile(sport, z, x, y, flags, cookies)
 		if err != nil {
 			log.Println("error fetching tile from Strava:", err.Error())
 			w.WriteHeader(http.StatusInternalServerError)
@@ -165,6 +165,7 @@ func main() {
 }
 
 func GetTile(
+	sport string,
 	z int,
 	x int,
 	y int,
@@ -172,7 +173,7 @@ func GetTile(
 	cookies []http.Cookie,
 ) (image.Image, error) {
 	if !flags.NoCache {
-		filename := CacheFileName(z, x, y, flags.Sport, false)
+		filename := CacheFileName(z, x, y, sport, false)
 		file, err := os.Open(filename)
 		if err != nil && !errors.Is(err, os.ErrNotExist) {
 			return nil, err
@@ -190,7 +191,7 @@ func GetTile(
 		tileX := x / divisor
 		tileY := y / divisor
 
-		tile, err := GetTile(15, tileX, tileY, flags, cookies)
+		tile, err := GetTile(sport, 15, tileX, tileY, flags, cookies)
 		if err != nil {
 			return nil, err
 		}
@@ -208,7 +209,7 @@ func GetTile(
 
 	url := fmt.Sprintf(
 		"https://content-a.strava.com/identified/globalheat/%s/mobileblue/%d/%d/%d.png?v=2",
-		flags.Sport,
+		sport,
 		z,
 		x,
 		y,
@@ -255,11 +256,11 @@ func GetTile(
 
 	// only save to cache after we know the image is good
 	if !flags.NoCache {
-		if err := os.MkdirAll(CacheFileName(z, x, y, flags.Sport, true), 0755); err != nil {
+		if err := os.MkdirAll(CacheFileName(z, x, y, sport, true), 0755); err != nil {
 			return nil, err
 		}
 
-		if err := os.WriteFile(CacheFileName(z, x, y, flags.Sport, false), buf, 0644); err != nil {
+		if err := os.WriteFile(CacheFileName(z, x, y, sport, false), buf, 0644); err != nil {
 			return nil, err
 		}
 	}
@@ -289,11 +290,6 @@ func CacheFileName(z, x, y int, sport string, dir bool) string {
 }
 
 func ParseFlags() Flags {
-	sport := flag.String(
-		"sport",
-		"sport_Ride",
-		"internal sport identifier used by Strava",
-	)
 	listenURL := flag.String(
 		"listen",
 		"localhost:8080",
@@ -338,7 +334,6 @@ func ParseFlags() Flags {
 	flag.Parse()
 
 	return Flags{
-		Sport:      *sport,
 		ListenURL:  *listenURL,
 		UserAgent:  *userAgent,
 		CertFile:   *certFile,
