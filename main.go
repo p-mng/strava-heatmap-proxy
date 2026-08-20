@@ -16,6 +16,7 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"strings"
 
 	_ "golang.org/x/image/webp"
 
@@ -26,14 +27,26 @@ import (
 )
 
 type Flags struct {
-	ListenURL string
-	UserAgent string
-	NoCache   bool
-	Cookies   string
+	ShowSports bool
+	ListenURL  string
+	UserAgent  string
+	NoCache    bool
+	Cookies    string
 }
+
+//go:embed sports.txt
+var sports string
 
 func main() {
 	flags := ParseFlags()
+
+	if flags.ShowSports {
+		fmt.Println("available sports:")
+		for line := range strings.SplitSeq(sports, "\n") {
+			fmt.Println(line)
+		}
+		return
+	}
 
 	var cookies []http.Cookie
 
@@ -277,6 +290,11 @@ func CacheFileName(z, x, y int, sport string, dir bool) string {
 }
 
 func ParseFlags() Flags {
+	showSports := flag.Bool(
+		"sports",
+		false,
+		"print some available sports types",
+	)
 	listenURL := flag.String(
 		"listen",
 		"localhost:8080",
@@ -301,9 +319,10 @@ func ParseFlags() Flags {
 	flag.Parse()
 
 	return Flags{
-		ListenURL: *listenURL,
-		UserAgent: *userAgent,
-		NoCache:   *noCache,
-		Cookies:   *cookies,
+		ShowSports: *showSports,
+		ListenURL:  *listenURL,
+		UserAgent:  *userAgent,
+		NoCache:    *noCache,
+		Cookies:    *cookies,
 	}
 }
